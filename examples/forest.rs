@@ -1,12 +1,11 @@
 use bevy::{prelude::*, render::camera::Camera};
+use bevy_prototype_parallax::{ParallaxPlugin, WindowSize};
 
 struct SpriteScale(Vec3);
-struct ScreenWidth(u32);
 fn main() {
-    let screen_width = ScreenWidth(1088);
     let window = WindowDescriptor {
         title: "Forrest".to_string(),
-        width: screen_width.0,
+        width: 1088,
         height: 640,
         vsync: true,
         resizable: false,
@@ -18,8 +17,8 @@ fn main() {
     App::build()
         .add_resource(window)
         .add_resource(scale)
-        .add_resource(screen_width)
         .add_plugins(DefaultPlugins)
+        .add_plugin(ParallaxPlugin)
         .add_startup_system(setup.system())
         .add_system(scroll_camera.system())
         .run();
@@ -56,8 +55,11 @@ fn setup(
 }
 
 /// A simple system that will move the camera to the right
-fn scroll_camera(width: Res<ScreenWidth>, mut query: Query<With<Camera, &mut Transform>>) -> () {
-    let width = (width.0) as f32;
+fn scroll_camera(
+    window_size: Res<WindowSize>,
+    mut query: Query<With<Camera, &mut Transform>>,
+) -> () {
+    let width = window_size.width as f32;
     for mut transform in query.iter_mut() {
         *transform.translation.x_mut() += 1.0;
         if transform.translation.x().floor() > width {
