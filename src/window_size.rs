@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::camera::Camera};
 ///! Helpers for getting the current window size.
 ///! We need to know this so we can determine how much to repeat an image
 
@@ -10,8 +10,15 @@ pub struct WindowSize {
     pub width: u32,
 }
 
-/// Startup system that will set the window size struct based on the window descriptor
-pub fn initial_window(window_desc: Res<WindowDescriptor>, mut window_size: ResMut<WindowSize>) {
-    window_size.height = window_desc.height;
-    window_size.width = window_desc.width;
+/// Syncs the window width to the camera
+pub fn window_size(windows: Res<Windows>, mut camera_query: Query<(&Camera, &mut WindowSize)>) {
+    for (cam, mut size) in camera_query.iter_mut() {
+        if let Some(window) = windows.get(cam.window) {
+            let windowsize = WindowSize {
+                height: window.height(),
+                width: window.width(),
+            };
+            *size = windowsize;
+        }
+    }
 }
