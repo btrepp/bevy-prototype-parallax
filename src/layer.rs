@@ -15,8 +15,15 @@ pub struct LayerComponents {
     pub sprite: Sprite,
 }
 
+/// Gets the 'screen' width of the sprite.
+/// This takes into account the scaling
+fn sprite_scaled_width(sprite: &Sprite, transform: &Transform) -> f32 {
+    sprite.size[0] * transform.scale.x()
+}
+
+/// Calculate the amount of sprites we need for the effect
 fn desired_children_count(window: &WindowSize, sprite: &Sprite, transform: &Transform) -> u32 {
-    let tex_width = (sprite.size[1] as f32 * transform.scale.x()) as u32;
+    let tex_width = sprite_scaled_width(sprite, transform) as u32;
     if tex_width > 0 {
         window.width.div_euclid(tex_width) + 2
     } else {
@@ -24,6 +31,9 @@ fn desired_children_count(window: &WindowSize, sprite: &Sprite, transform: &Tran
     }
 }
 
+/// Mutates the layer based on the camera position
+/// this allows us to have the parallax effect by having the layers move at different rates
+/// once we move past the width of the sprite, it resets to 0
 fn move_layer_position(
     window: &WindowSize,
     camera: &Vec3,
@@ -32,7 +42,7 @@ fn move_layer_position(
     transform: &mut Transform,
 ) -> () {
     let left_side = 0.0 - window.width as f32 / 2.0;
-    let sprite_width = sprite.size[1] as f32 * transform.scale.x();
+    let sprite_width = sprite_scaled_width(sprite, transform);
     let camera_x = (camera.x() * speed.speed).rem_euclid(sprite_width);
     *transform.translation.x_mut() = (left_side - camera_x).round();
 }
@@ -41,7 +51,7 @@ fn move_layer_position(
 /// Based on the windows size
 pub fn children_count_system(
     mut commands: Commands,
-    mut cameras_query: Query<(&Camera, &WindowSize, &Children)>,
+    cameras_query: Query<(&Camera, &WindowSize, &Children)>,
     mut layer_query: Query<(
         With<Layer, Entity>,
         &Parent,
@@ -67,7 +77,7 @@ pub fn children_count_system(
                 commands.spawn(child).with(Parent(entity));
             }
 
-            //TODO? remove
+            //TODO: remove sprites if they aren't needed
         }
     }
 }
@@ -80,7 +90,8 @@ pub fn children_layout_system(
     for (sprite, children) in layers.iter() {
         for (index, child) in children.iter().enumerate() {
             if let Ok(mut transform) = sprites.get_component_mut::<Transform>(*child) {
-                *transform.translation.x_mut() = index as f32 * sprite.size[1];
+                *transform.translation.x_mut() =
+                    index as f32 * sprite_scaled_width(sprite, &transform);
                 *transform.translation.z_mut() = -999.0;
             }
         }
@@ -100,28 +111,6 @@ pub fn layer_movement_system(
                 move_layer_position(window, &camera, sprite, layer, &mut trans);
             }
         }
-    }
-}
-
-pub fn debug_system(
-    cameras: Query<(&Camera, &Transform, &Children)>,
-    layers: Query<(&Layer, &Transform, &Children)>,
-    sprites: Query<(&Sprite, &Transform)>,
-) {
-    for cam in cameras.iter() {
-        let (_, t, _) = cam;
-        println!("{:?}", t.translation);
-    }
-
-    for layers in layers.iter() {
-        let (_, t, _) = layers;
-        println!("{:?}", t.translation);
-    }
-
-    println!();
-
-    for sprites in sprites.iter() {
-        // println!("{:?}", sprites);
     }
 }
 
@@ -157,7 +146,7 @@ mod tests {
         case(1024,0.0, 512.0,0.0,-512.0),
         case(1024,1.0, 512.0,0.0,-512.0),
         case(1024,1.0, 512.0,1.0,-513.0),
-        case(1024,512.0, 512.0,1.0,-512.0)
+        case(1024,513.0, 512.0,1.0,-513.0)
     )]
     fn test_layer_translation(screen: u32, camera: f32, sprite: f32, speed: f32, expected: f32) {
         let window_size = WindowSize {

@@ -13,15 +13,5 @@ impl Plugin for ParallaxPlugin {
         app.add_system(layer::children_count_system.system());
         app.add_system(layer::children_layout_system.system());
         app.add_system(window_size::window_size.system());
-        app.add_system(layer::debug_system.system());
-        //app.add_system(layer::print_sprints.system());
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
     }
 }
