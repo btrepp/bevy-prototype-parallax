@@ -31,6 +31,25 @@ fn desired_children_count(window: &WindowSize, sprite: &Sprite, transform: &Tran
     }
 }
 
+/// Caculates an offset to put the layer at the left edge of the 'container'
+/// This is because the camera seems to center on 0.0
+fn camera_left_edge_offset(window: &WindowSize) -> f32 {
+    let left_side = 0.0 - window.width as f32 / 2.0;
+    left_side
+}
+
+/// How far to offset the layer due to the camera position
+/// Will be clamped by the sprite offset
+fn camera_sprite_offset(
+    camera: &Vec3,
+    layer: &Layer,
+    sprite: &Sprite,
+    transform: &Transform,
+) -> f32 {
+    let sprite_width = sprite_scaled_width(sprite, transform);
+    -(camera.x() * layer.speed).rem_euclid(sprite_width)
+}
+
 /// Mutates the layer based on the camera position
 /// this allows us to have the parallax effect by having the layers move at different rates
 /// once we move past the width of the sprite, it resets to 0
@@ -38,13 +57,12 @@ fn move_layer_position(
     window: &WindowSize,
     camera: &Vec3,
     sprite: &Sprite,
-    speed: &Layer,
+    layer: &Layer,
     transform: &mut Transform,
 ) -> () {
-    let left_side = 0.0 - window.width as f32 / 2.0;
-    let sprite_width = sprite_scaled_width(sprite, transform);
-    let camera_x = (camera.x() * speed.speed).rem_euclid(sprite_width);
-    *transform.translation.x_mut() = (left_side - camera_x).round();
+    let offset = camera_left_edge_offset(&window);
+    let camera_x = camera_sprite_offset(camera, layer, sprite, transform);
+    *transform.translation.x_mut() = offset + camera_x;
 }
 
 /// Manages the amount of child sprites we need to repeat
@@ -120,23 +138,84 @@ mod tests {
     use rstest::rstest;
 
     #[rstest(
+        width,
+        expected,
+        case(1024, -512.0),
+        case(1000, -500.0)
+    )]
+    fn test_left_edge(width: u32, expected: f32) {
+        let window = WindowSize {
+            height: 576,
+            width: width,
+        };
+        let result = camera_left_edge_offset(&window);
+        assert_eq!(expected, result);
+    }
+
+    #[rstest(
+        camera,
+        speed,
+        sprite,
+        expected,
+        case(0.0, 1.0,100.0, 0.0),
+        case(1.0, 1.0,100.0, -1.0),
+        case(101.0, 1.0, 100.0, -1.0),
+        case(200.0, 1.0, 100.0, 0.0),
+        case(220.0, 1.0, 100.0, -20.0)
+        ::trace
+    )]
+    fn test_layer_offset(camera: f32, speed: f32, sprite: f32, expected: f32) {
+        let camera = Vec3::new(camera, 0.0, 0.0);
+        let sprite = Sprite::new(Vec2::splat(sprite));
+        let transform = Transform::default();
+        let layer = Layer { speed };
+        let result = camera_sprite_offset(&camera, &layer, &sprite, &transform);
+        assert_eq!(expected, result);
+    }
+
+    #[rstest(
+        sprite,
+        scale,
+        expected,
+        case(100.0, 1.0, 100.0),
+        case(100.0, 2.0, 200.0),
+        case(100.0, 0.0, 0.0),
+        case(512.0, 1.0, 512.0)
+        ::trace
+    )]
+    fn test_scaled_width(sprite: f32, scale: f32, expected: f32) {
+        let transform = Transform {
+            scale: Vec3::splat(scale),
+            ..Default::default()
+        };
+        let sprite = Sprite::new(Vec2::splat(sprite));
+        let result = sprite_scaled_width(&sprite, &transform);
+        assert_eq!(expected, result);
+    }
+
+    #[rstest(
         screen,
         texture,
+        scale,
         expected,
-        case(1024, 100, 12),
-        case(1024, 1025, 2),
-        case(1024, 800, 3),
-        case(1024, 0, 0)
+        case(1024, 100, 1.0,12),
+        case(1024, 1025,1.0, 2),
+        case(1024, 800, 1.0,3),
+        case(1024, 0, 1.0,0)
+        ::trace
     )]
-    fn test_desired_children_count(screen: u32, texture: u32, expected: u32) {
+    fn test_desired_children_count(screen: u32, texture: u32, scale: f32, expected: u32) {
         let window = WindowSize {
             height: 576,
             width: screen,
         };
 
-        let transform = Transform::default();
+        let transform = Transform {
+            scale: Vec3::splat(scale),
+            ..Default::default()
+        };
 
-        let texture = Sprite::new(Vec2::new(window.height as f32, texture as f32));
+        let texture = Sprite::new(Vec2::new(texture as f32, window.height as f32));
         let result = desired_children_count(&window, &texture, &transform);
         assert_eq!(expected, result);
     }
@@ -145,8 +224,12 @@ mod tests {
         screen,camera,sprite,speed,expected,
         case(1024,0.0, 512.0,0.0,-512.0),
         case(1024,1.0, 512.0,0.0,-512.0),
+        case(1024,512.0, 512.0,1.0,-512.0),
+        case(1024,513.0, 512.0,1.0,-513.0),
         case(1024,1.0, 512.0,1.0,-513.0),
-        case(1024,513.0, 512.0,1.0,-513.0)
+        case(1024,2.0, 512.0,0.5,-513.0),
+        case(1024,1024.0, 512.0,1.0,-512.0)
+        ::trace
     )]
     fn test_layer_translation(screen: u32, camera: f32, sprite: f32, speed: f32, expected: f32) {
         let window_size = WindowSize {
@@ -156,9 +239,9 @@ mod tests {
 
         let camera = Vec3::new(camera, 0.0, 0.0);
         let speed = Layer { speed };
-        let sprite = Sprite::new(Vec2::new(window_size.height as f32, sprite));
+        let sprite = Sprite::new(Vec2::new(sprite, window_size.height as f32));
         let mut transform = Transform::default();
         move_layer_position(&window_size, &camera, &sprite, &speed, &mut transform);
-        assert_eq!(transform.translation.x(), expected);
+        assert_eq!(expected, transform.translation.x());
     }
 }

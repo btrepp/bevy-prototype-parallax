@@ -1,7 +1,8 @@
+use std::f32::consts::PI;
+
 use bevy::{prelude::*, render::camera::Camera};
 use bevy_prototype_parallax::{Layer, LayerComponents, ParallaxPlugin, WindowSize};
 
-struct SpriteScale(Vec3);
 struct Player {
     pub run: Handle<TextureAtlas>,
     pub idle: Handle<TextureAtlas>,
@@ -17,11 +18,8 @@ fn main() {
         ..Default::default()
     };
 
-    let scale: SpriteScale = SpriteScale(Vec3::splat(1.0));
-
     App::build()
         .add_resource(window)
-        .add_resource(scale)
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup_parallax.system())
         .add_startup_system(setup_character.system())
@@ -36,7 +34,6 @@ fn main() {
 fn setup_parallax(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    scale: Res<SpriteScale>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     // Helper that loads an asset as a parallax layer
@@ -54,8 +51,8 @@ fn setup_parallax(
             },
             material: handle,
             transform: Transform {
-                scale: scale.0,
-                translation: Vec3::new(0.0, 0.0, -1.0),
+                scale: Vec3::splat(1.0),
+                translation: Vec3::new(0.0, 0.0, 0.0),
                 ..Default::default()
             },
             ..Default::default()
@@ -70,7 +67,7 @@ fn setup_parallax(
             // Spawn the layers.
             // We can have as many as we like
             cb.spawn(layer("parallax-forest-back-trees.png", 0.0));
-            cb.spawn(layer("parallax-forest-lights.png", 0.0));
+            cb.spawn(layer("parallax-forest-lights.png", 0.05));
             cb.spawn(layer("parallax-forest-middle-trees.png", 0.1));
             cb.spawn(layer("parallax-forest-front-trees.png", 0.2));
         });
@@ -129,9 +126,11 @@ fn move_character_system(
     for (player, mut transform, mut atlas) in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::A) {
             *transform.translation.x_mut() += -1.0 * 5.0;
+            *transform.rotation.as_mut() = Quat::from_rotation_y(PI).into();
             *atlas = player.run.clone();
         } else if keyboard_input.pressed(KeyCode::D) {
             *transform.translation.x_mut() += 1.0 * 5.0;
+            *transform.rotation.as_mut() = Quat::from_rotation_y(0.0).into();
             *atlas = player.run.clone();
         } else {
             *atlas = player.idle.clone();
