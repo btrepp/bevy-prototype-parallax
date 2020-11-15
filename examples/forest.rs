@@ -11,8 +11,8 @@ struct Player {
 fn main() {
     let window = WindowDescriptor {
         title: "Forrest".to_string(),
-        width: 1088,
-        height: 640,
+        width: 1280,
+        height: 720,
         vsync: true,
         resizable: false,
         ..Default::default()
@@ -51,7 +51,7 @@ fn setup_parallax(
             },
             material: handle,
             transform: Transform {
-                scale: Vec3::splat(1.0),
+                scale: Vec3::new(4.0, 4.5, 1.0),
                 translation: Vec3::new(0.0, 0.0, 0.0),
                 ..Default::default()
             },
@@ -95,8 +95,8 @@ fn setup_character(
         .spawn(SpriteSheetComponents {
             texture_atlas: player.idle.clone(),
             transform: Transform {
-                scale: Vec3::splat(10.0),
-                translation: Vec3::new(0.0, -40.0, 1.0),
+                scale: Vec3::new(25.0, 25.0, 1.0),
+                translation: Vec3::new(0.0, -220.0, 1.0),
                 ..Default::default()
             },
             ..Default::default()
