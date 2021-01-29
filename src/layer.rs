@@ -86,7 +86,7 @@ pub fn children_count_system(
             let to_add = desired_children as usize - current_children;
 
             for _ in 0..to_add {
-                let child = SpriteComponents {
+                let child = SpriteBundle {
                     material: material.clone(),
                     sprite: Sprite::default(),
                     ..Default::default()
