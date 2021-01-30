@@ -7,7 +7,7 @@ pub struct Layer {
 }
 
 #[derive(Bundle, Default)]
-pub struct LayerComponents {
+pub struct LayerBundle {
     pub layer: Layer,
     pub transform: Transform,
     pub global: GlobalTransform,
@@ -79,7 +79,7 @@ pub fn children_count_system(
         &Sprite,
         &Handle<ColorMaterial>,
         &Transform,
-    ), With<(Layer, Entity)>>,
+    ), With<Layer>>,
 ) -> () {
     for (entity, parent, children, sprite, material, transform) in layer_query.iter_mut() {
         if let Ok(window) = cameras_query.get_component(parent.0) {

@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::{prelude::*, render::camera::Camera};
-use bevy_prototype_parallax::{Layer, LayerComponents, ParallaxPlugin, WindowSize};
+use bevy_prototype_parallax::{Layer, LayerBundle, ParallaxPlugin, WindowSize};
 
 struct Player {
     pub run: Handle<TextureAtlas>,
@@ -38,13 +38,13 @@ fn setup_parallax(
 ) {
     // Helper that loads an asset as a parallax layer
     // layers should have different speeds to achieve the effect
-    let mut layer = |path: &str, speed: f32| -> LayerComponents {
+    let mut layer = |path: &str, speed: f32| -> LayerBundle {
         let handle = {
             let handle = asset_server.load(path);
             let color = materials.add(handle.into());
             color
         };
-        LayerComponents {
+        LayerBundle {
             layer: Layer {
                 speed: speed,
                 ..Default::default()
