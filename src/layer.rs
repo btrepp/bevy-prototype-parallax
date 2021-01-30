@@ -18,7 +18,7 @@ pub struct LayerComponents {
 /// Gets the 'screen' width of the sprite.
 /// This takes into account the scaling
 fn sprite_scaled_width(sprite: &Sprite, transform: &Transform) -> f32 {
-    sprite.size[0] * transform.scale.x()
+    sprite.size[0] * transform.scale.x
 }
 
 /// Calculate the amount of sprites we need for the effect
@@ -47,7 +47,7 @@ fn camera_sprite_offset(
     transform: &Transform,
 ) -> f32 {
     let sprite_width = sprite_scaled_width(sprite, transform);
-    -(camera.x() * layer.speed).rem_euclid(sprite_width)
+    -(camera.x * layer.speed).rem_euclid(sprite_width)
 }
 
 /// Mutates the layer based on the camera position
@@ -62,22 +62,29 @@ fn move_layer_position(
 ) -> () {
     let offset = camera_left_edge_offset(&window);
     let camera_x = camera_sprite_offset(camera, layer, sprite, transform);
-    *transform.translation.x_mut() = offset + camera_x;
+
+    let translation = Vec3::new(
+        offset + camera_x,
+        transform.translation.y,
+        transform.translation.z
+    );
+
+    *transform = Transform::from_translation(translation);
 }
 
 /// Manages the amount of child sprites we need to repeat
 /// Based on the windows size
 pub fn children_count_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     cameras_query: Query<(&Camera, &WindowSize, &Children)>,
     mut layer_query: Query<(
-        With<Layer, Entity>,
+        Entity,
         &Parent,
         &Children,
         &Sprite,
         &Handle<ColorMaterial>,
         &Transform,
-    )>,
+    ), With<(Layer, Entity)>>,
 ) -> () {
     for (entity, parent, children, sprite, material, transform) in layer_query.iter_mut() {
         if let Ok(window) = cameras_query.get_component(parent.0) {
@@ -95,22 +102,26 @@ pub fn children_count_system(
                 commands.spawn(child).with(Parent(entity));
             }
 
-            //TODO: remove sprites if they aren't needed
+            // TODO: remove sprites if they aren't needed
         }
     }
 }
 
 /// Responsible for setting the positioning of the sprites
 pub fn children_layout_system(
-    layers: Query<With<Layer, (&Sprite, &Children)>>,
+    layers: Query<(&Sprite, &Children), With<Layer>>,
     mut sprites: Query<&mut Transform>,
 ) {
     for (sprite, children) in layers.iter() {
         for (index, child) in children.iter().enumerate() {
             if let Ok(mut transform) = sprites.get_component_mut::<Transform>(*child) {
-                *transform.translation.x_mut() =
-                    index as f32 * sprite_scaled_width(sprite, &transform);
-                *transform.translation.z_mut() = -999.0;
+                let translation = Vec3::new(
+                    index as f32 * sprite_scaled_width(sprite, &transform),
+                    transform.translation.y,
+                    -999.0
+                );
+
+                *transform = Transform::from_translation(translation);
             }
         }
     }
@@ -119,7 +130,7 @@ pub fn children_layout_system(
 /// Matches the layer to the camera.
 /// Note the layer is offset to the left by half the window to make
 pub fn layer_movement_system(
-    cameras: Query<With<Camera, (&Transform, &WindowSize, &Children)>>,
+    cameras: Query<(&Transform, &WindowSize, &Children), With<Camera>>,
     mut layers: Query<(&Layer, &Sprite, &mut Transform)>,
 ) -> () {
     for (transform, window, children) in cameras.iter() {

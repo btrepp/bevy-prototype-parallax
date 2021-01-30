@@ -14,9 +14,12 @@ pub struct WindowSize {
 pub fn window_size(windows: Res<Windows>, mut camera_query: Query<(&Camera, &mut WindowSize)>) {
     for (cam, mut size) in camera_query.iter_mut() {
         if let Some(window) = windows.get(cam.window) {
+
+            // Note: This conversion will be lossy, but u32 is used internally 
+            // for texture calcs.
             let windowsize = WindowSize {
-                height: window.height(),
-                width: window.width(),
+                height: window.height() as u32, 
+                width: window.width() as u32,
             };
             *size = windowsize;
         }
