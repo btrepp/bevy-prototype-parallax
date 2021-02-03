@@ -2,8 +2,9 @@ mod layer;
 mod window_size;
 use bevy::prelude::*;
 
-pub use layer::{Layer, LayerComponents};
+pub use layer::{Layer, LayerBundle};
 pub use window_size::WindowSize;
+
 /// The plugin that enables parallax backgrounds
 /// Note you will still need to make sure you add a background entity
 pub struct ParallaxPlugin;
