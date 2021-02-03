@@ -11,7 +11,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy" }
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "cc9ed52ea7f72449215f13710fcb6370d02d9ac8" }
 
 [dev-dependencies]
 rstest = "0.6.4"
