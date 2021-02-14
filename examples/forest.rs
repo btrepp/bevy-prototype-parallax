@@ -19,7 +19,7 @@ fn main() {
     };
 
     App::build()
-        .add_resource(window)
+        .insert_resource(window)
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup_parallax.system())
         .add_startup_system(setup_character.system())
@@ -32,7 +32,7 @@ fn main() {
 
 /// Set up our background layers
 fn setup_parallax(
-    mut commands: &mut Commands,
+    commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -61,7 +61,7 @@ fn setup_parallax(
 
     // Note the backgrounds are associated with a camera.
     commands
-        .spawn(Camera2dBundle::default())
+        .spawn(OrthographicCameraBundle::new_2d())
         .with(WindowSize::default())
         .with_children(|cb| {
             // Spawn the layers.
@@ -75,7 +75,7 @@ fn setup_parallax(
 
 /// Spawns our character and loads it's resources
 fn setup_character(
-    mut commands: &mut Commands,
+    commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
