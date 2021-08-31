@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::{prelude::*, render::camera::Camera};
-use bevy_prototype_parallax::{Layer, LayerComponents, ParallaxPlugin, WindowSize};
+use bevy_prototype_parallax::{Layer, LayerBundle, ParallaxPlugin, WindowSize};
 
 struct Player {
     pub run: Handle<TextureAtlas>,
@@ -11,15 +11,15 @@ struct Player {
 fn main() {
     let window = WindowDescriptor {
         title: "Forrest".to_string(),
-        width: 1280,
-        height: 720,
+        width: 1280.0,
+        height: 720.0,
         vsync: true,
         resizable: false,
         ..Default::default()
     };
 
     App::build()
-        .add_resource(window)
+        .insert_resource(window)
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup_parallax.system())
         .add_startup_system(setup_character.system())
@@ -38,13 +38,13 @@ fn setup_parallax(
 ) {
     // Helper that loads an asset as a parallax layer
     // layers should have different speeds to achieve the effect
-    let mut layer = |path: &str, speed: f32| -> LayerComponents {
+    let mut layer = |path: &str, speed: f32| -> LayerBundle {
         let handle = {
             let handle = asset_server.load(path);
             let color = materials.add(handle.into());
             color
         };
-        LayerComponents {
+        LayerBundle {
             layer: Layer {
                 speed: speed,
                 ..Default::default()
@@ -61,15 +61,15 @@ fn setup_parallax(
 
     // Note the backgrounds are associated with a camera.
     commands
-        .spawn(Camera2dComponents::default())
-        .with(WindowSize::default())
+        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .insert(WindowSize::default())
         .with_children(|cb| {
             // Spawn the layers.
             // We can have as many as we like
-            cb.spawn(layer("parallax-forest-back-trees.png", 0.0));
-            cb.spawn(layer("parallax-forest-lights.png", 0.05));
-            cb.spawn(layer("parallax-forest-middle-trees.png", 0.1));
-            cb.spawn(layer("parallax-forest-front-trees.png", 0.2));
+            cb.spawn_bundle(layer("parallax-forest-back-trees.png", 0.0));
+            cb.spawn_bundle(layer("parallax-forest-lights.png", 0.05));
+            cb.spawn_bundle(layer("parallax-forest-middle-trees.png", 0.1));
+            cb.spawn_bundle(layer("parallax-forest-front-trees.png", 0.2));
         });
 }
 
@@ -92,7 +92,7 @@ fn setup_character(
     };
 
     commands
-        .spawn(SpriteSheetComponents {
+        .spawn_bundle(SpriteSheetBundle {
             texture_atlas: player.idle.clone(),
             transform: Transform {
                 scale: Vec3::new(25.0, 25.0, 1.0),
@@ -101,17 +101,18 @@ fn setup_character(
             },
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.1, true))
-        .with(player);
+        .insert(Timer::from_seconds(0.1, true))
+        .insert(player);
 }
 
 /// From bevy examples, will animate the sprites in an atlas
 fn animate_sprite_system(
     texture_atlases: Res<Assets<TextureAtlas>>,
+    time: Res<Time>,
     mut query: Query<(&mut Timer, &mut TextureAtlasSprite, &Handle<TextureAtlas>)>,
 ) {
-    for (timer, mut sprite, texture_atlas_handle) in query.iter_mut() {
-        if timer.finished {
+    for (mut timer, mut sprite, texture_atlas_handle) in query.iter_mut() {
+        if timer.tick(time.delta()).finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
             sprite.index = ((sprite.index as usize + 1) % texture_atlas.textures.len()) as u32;
         }
@@ -125,12 +126,12 @@ fn move_character_system(
 ) {
     for (player, mut transform, mut atlas) in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::A) {
-            *transform.translation.x_mut() += -1.0 * 5.0;
-            *transform.rotation.as_mut() = Quat::from_rotation_y(PI).into();
+            transform.translation.x += -1.0 * 5.0;
+            transform.rotation = Quat::from_rotation_y(PI).into();
             *atlas = player.run.clone();
         } else if keyboard_input.pressed(KeyCode::D) {
-            *transform.translation.x_mut() += 1.0 * 5.0;
-            *transform.rotation.as_mut() = Quat::from_rotation_y(0.0).into();
+            transform.translation.x += 1.0 * 5.0;
+            transform.rotation = Quat::from_rotation_y(0.0).into();
             *atlas = player.run.clone();
         } else {
             *atlas = player.idle.clone();
@@ -140,12 +141,12 @@ fn move_character_system(
 
 /// A simple system that will cause the camera to follow the character
 fn follow_player_camera(
-    player: Query<With<Player, &Transform>>,
-    mut camera: Query<With<Camera, &mut Transform>>,
+    player: Query<&Transform, (With<Player>, Without<Camera>)>,
+    mut camera: Query<&mut Transform, (With<Camera>, Without<Player>)>,
 ) {
     if let Some(first_player) = player.iter().next() {
         for mut transform in camera.iter_mut() {
-            *transform.translation.x_mut() = first_player.translation.x();
+            transform.translation.x = first_player.translation.x;
         }
     }
 }
