@@ -70,17 +70,20 @@ fn move_layer_position(
 /// Manages the amount of child sprites we need to repeat
 /// Based on the windows size
 pub fn children_count_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     cameras_query: Query<(&Camera, &WindowSize, &Children)>,
-    mut layer_query: Query<(
-        Entity,
-        &Parent,
-        &Children,
-        &Sprite,
-        &Handle<ColorMaterial>,
-        &Transform,
-    ), With<Layer>>,
-) -> () {
+    mut layer_query: Query<
+        (
+            Entity,
+            &Parent,
+            &Children,
+            &Sprite,
+            &Handle<ColorMaterial>,
+            &Transform,
+        ),
+        With<Layer>,
+    >,
+) {
     for (entity, parent, children, sprite, material, transform) in layer_query.iter_mut() {
         if let Ok(window) = cameras_query.get_component(parent.0) {
             let desired_children = desired_children_count(&window, &sprite, &transform);
@@ -88,13 +91,13 @@ pub fn children_count_system(
             let to_add = desired_children as usize - current_children;
 
             for _ in 0..to_add {
-                let child = SpriteBundle {
-                    material: material.clone(),
-                    sprite: Sprite::default(),
-                    ..Default::default()
-                };
-
-                commands.spawn(child).with(Parent(entity));
+                commands
+                    .spawn_bundle(SpriteBundle {
+                        material: material.clone(),
+                        sprite: Sprite::default(),
+                        ..Default::default()
+                    })
+                    .insert(Parent(entity));
             }
 
             // TODO: remove sprites if they aren't needed
@@ -121,7 +124,7 @@ pub fn children_layout_system(
 /// Note the layer is offset to the left by half the window to make
 pub fn layer_movement_system(
     cameras: Query<(&Transform, &WindowSize, &Children), With<Camera>>,
-    mut layers: Query<(&Layer, &Sprite, &mut Transform)>,
+    mut layers: Query<(&Layer, &Sprite, &mut Transform), Without<Camera>>,
 ) -> () {
     for (transform, window, children) in cameras.iter() {
         let camera = transform.translation;

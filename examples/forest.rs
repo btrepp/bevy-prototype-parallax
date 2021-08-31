@@ -32,7 +32,7 @@ fn main() {
 
 /// Set up our background layers
 fn setup_parallax(
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -61,21 +61,21 @@ fn setup_parallax(
 
     // Note the backgrounds are associated with a camera.
     commands
-        .spawn(OrthographicCameraBundle::new_2d())
-        .with(WindowSize::default())
+        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .insert(WindowSize::default())
         .with_children(|cb| {
             // Spawn the layers.
             // We can have as many as we like
-            cb.spawn(layer("parallax-forest-back-trees.png", 0.0));
-            cb.spawn(layer("parallax-forest-lights.png", 0.05));
-            cb.spawn(layer("parallax-forest-middle-trees.png", 0.1));
-            cb.spawn(layer("parallax-forest-front-trees.png", 0.2));
+            cb.spawn_bundle(layer("parallax-forest-back-trees.png", 0.0));
+            cb.spawn_bundle(layer("parallax-forest-lights.png", 0.05));
+            cb.spawn_bundle(layer("parallax-forest-middle-trees.png", 0.1));
+            cb.spawn_bundle(layer("parallax-forest-front-trees.png", 0.2));
         });
 }
 
 /// Spawns our character and loads it's resources
 fn setup_character(
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
@@ -92,7 +92,7 @@ fn setup_character(
     };
 
     commands
-        .spawn(SpriteSheetBundle {
+        .spawn_bundle(SpriteSheetBundle {
             texture_atlas: player.idle.clone(),
             transform: Transform {
                 scale: Vec3::new(25.0, 25.0, 1.0),
@@ -101,8 +101,8 @@ fn setup_character(
             },
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.1, true))
-        .with(player);
+        .insert(Timer::from_seconds(0.1, true))
+        .insert(player);
 }
 
 /// From bevy examples, will animate the sprites in an atlas
@@ -112,8 +112,7 @@ fn animate_sprite_system(
     mut query: Query<(&mut Timer, &mut TextureAtlasSprite, &Handle<TextureAtlas>)>,
 ) {
     for (mut timer, mut sprite, texture_atlas_handle) in query.iter_mut() {
-        timer.tick(time.delta_seconds());
-        if timer.finished() {
+        if timer.tick(time.delta()).finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
             sprite.index = ((sprite.index as usize + 1) % texture_atlas.textures.len()) as u32;
         }
@@ -142,8 +141,8 @@ fn move_character_system(
 
 /// A simple system that will cause the camera to follow the character
 fn follow_player_camera(
-    player: Query<&Transform, With<Player>>,
-    mut camera: Query<&mut Transform, With<Camera>>,
+    player: Query<&Transform, (With<Player>, Without<Camera>)>,
+    mut camera: Query<&mut Transform, (With<Camera>, Without<Player>)>,
 ) {
     if let Some(first_player) = player.iter().next() {
         for mut transform in camera.iter_mut() {
